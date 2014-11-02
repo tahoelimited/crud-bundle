@@ -1,0 +1,4 @@
+parameters:
+#    tahoe_crud.example.class: Tahoe\Bundle\CrudBundle\Example
+
+services:
