@@ -1,0 +1,6 @@
+services:
+    tahoe_crud.twig.crud_extension:
+        class: Tahoe\Bundle\CrudBundle\Twig\TahoeCrudExtension
+        tags:
+            - { name: twig.extension }
+        arguments: [@router]
