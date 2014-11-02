@@ -1,0 +1,22 @@
+{% extends '::base.html.twig' %}
+{% from 'TahoeCrudBundle:Widgets:form_actions.html.twig' import create %}
+
+{% block page_title -%}
+    <h1>Adding new {{ entityName }}</h1>
+{%- endblock %}
+
+{% block current_breadcrumb %}
+    <li><a href="{{ path(routePrefix ~ '_index', additional_params) }}">{{ entityName }}</a><i class="fa fa-circle"></i></li>
+    <li>
+        <span>New</span>
+    </li>
+{% endblock %}
+
+{% block content -%}
+    <div class="portlet light">
+        {{ form_start(form, {attr: {class: 'form-horizontal'}}) }}
+        {{ form_widget(form) }}
+        {{ create() }}
+        {{ form_end(form) }}
+    </div>
+{% endblock content %}

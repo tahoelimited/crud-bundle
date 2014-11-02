@@ -1,0 +1,17 @@
+{% extends '::base.html.twig' %}
+
+{% block page_title -%}
+    <h1>{{ entityName }}</h1>
+{%- endblock %}
+
+{% block current_breadcrumb %}
+    <li>{{ entityName }}</li>
+{% endblock %}
+
+{% block content -%}
+
+{% endblock content %}
+
+{% block javascripts %}
+    {{ parent() }}
+{% endblock javascripts %}
