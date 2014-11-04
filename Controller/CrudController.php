@@ -197,7 +197,7 @@ class CrudController extends Controller
 
     public function dispatchEvent($name, $resource)
     {
-        $event_name = sprintf('tahoe_xfrify.crud.on_%s_%s', strtolower($this->entityName), $name);
+        $event_name = sprintf('tahoe_xfrify.crud.on_%s_%s', strtolower($this->getParameter('entityName')), $name);
         $this->get('event_dispatcher')->dispatch($event_name, new GenericEvent($resource));
     }
 
