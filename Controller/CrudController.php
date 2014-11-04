@@ -195,6 +195,12 @@ class CrudController extends Controller
         return array();
     }
 
+    public function dispatchEvent($name, $resource)
+    {
+        $event_name = sprintf('tahoe_xfrify.crud.on_%s_%s', strtolower($this->entityName), $name);
+        $this->get('event_dispatcher')->dispatch($event_name, new GenericEvent($resource));
+    }
+
     public function setFlash($type, $eventName, $translate = true, $params = array())
     {
         /** @var FlashBag $flashBag */
