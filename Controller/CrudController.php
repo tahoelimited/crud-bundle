@@ -292,6 +292,8 @@ class CrudController extends Controller
         $publicMethods = get_class_methods($entity);
         $fields = [];
         foreach($publicMethods as $method) {
+            // we don't want to show the tenant property
+            if ($method == "getTenant") continue;
             if (false !== strpos($method, "get")) {
                 $method = str_replace("get", "", $method);
                 $fields[$this->from_camel_case($method)] = lcfirst($method);
