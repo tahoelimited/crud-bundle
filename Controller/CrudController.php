@@ -6,7 +6,8 @@ use Doctrine\Bundle\DoctrineBundle\Mapping\DisconnectedMetadataFactory;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
 
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+//use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use FOS\RestBundle\Controller\FOSRestController as Controller;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\EventDispatcher\GenericEvent;
@@ -18,6 +19,10 @@ use Tahoe\Bundle\CrudBundle\Handler\EntityHandler;
 use Tahoe\Bundle\CrudBundle\Handler\HandlerInterface;
 use Tahoe\Bundle\CrudBundle\Repository\RepositoryInterface;
 use Tahoe\Bundle\CrudBundle\EventListener\CrudEvent;
+
+use FOS\RestBundle\Controller\Annotations\View;
+use Tahoe\Bundle\MultiTenancyBundle\Model\TenantAwareInterface;
+use FOS\RestBundle\Util\Codes;
 
 
 /**
@@ -72,49 +77,16 @@ class CrudController extends Controller
     }
 
     /**
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @View(serializerGroups={"list"})
      */
-    public function indexAction()
+    public function cgetAction()
     {
-        $entities = $this->repository->findAll();
-
-        return $this->render(
-            $this->getTemplateName('index'),
-            array(
-                'entities' => $entities,
-                'routePrefix' => $this->getResourcePathPrefix(),
-                'entityName' => $this->getParameter('entityName')
-            )
-        );
+        return $this->getCollection();
     }
 
-    protected function getTemplateName($type)
+    public function getCollection()
     {
-        $specificTemplate = sprintf(
-            '%s:Crud/%s:%s.html.twig',
-            $this->getParameter('bundleName'),
-            $this->getParameter('entityName'),
-            $type
-        );
-
-        if ($this->container->get('templating')->exists($specificTemplate)) {
-            return $specificTemplate;
-        }
-
-        $bundleTemplate = sprintf(
-            '%s:Crud:%s.html.twig',
-            $this->getParameter('bundleName'),
-            $type
-        );
-
-        if ($this->container->get('templating')->exists($bundleTemplate)) {
-            return $bundleTemplate;
-        }
-
-        return sprintf(
-            'TahoeCrudBundle:Crud:%s.html.twig',
-            $type
-        );
+        return $this->repository->findAll();
     }
 
     private function getResourcePrefix()
@@ -240,47 +212,29 @@ class CrudController extends Controller
         );
     }
 
-    public function showAction(Request $request)
+    /**
+     * @View(serializerGroups={"details"})
+     * @return object
+     */
+    public function getAction($id)
     {
-        $entity = $this->findOr404($request);
+        $entity = $this->findOr404($id);
 
-        return $this->render(
-            $this->getTemplateName('show'),
-            array(
-                'entity' => $entity,
-                'routePrefix' => $this->getResourcePathPrefix(),
-                'entityName' => $this->getParameter('entityName'),
-                'properties' => $this->getEntityFields($entity),
-                'additional_params' => $this->getAdditionalParams()
-            )
-        );
+        return $entity;
     }
 
     /**
-     * @param Request $request
-     * @param string  $identifier
-     *
-     * @return object
-     *
-     * @throws NotFoundHttpException
+     * @param $id
+     * @return mixed
      */
-    public function findOr404(Request $request, $identifier = 'id')
+    public function findOr404($id)
     {
 
-        $entity = $this->repository->find($request->get($identifier));
+        $entity = $this->repository->find($id);
 
         if (!$entity) {
             throw $this->createNotFoundException(
                 sprintf('Unable to find %s entity.', $this->getParameter('entityName'))
-            );
-        }
-
-        if (!$entity) {
-            throw new NotFoundHttpException(
-                sprintf(
-                    'Requested %s does not exist with criteria specified',
-                    $this->getParameter('entityName')
-                )
             );
         }
 
