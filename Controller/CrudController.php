@@ -6,7 +6,8 @@ use Doctrine\Bundle\DoctrineBundle\Mapping\DisconnectedMetadataFactory;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
 
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+//use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use FOS\RestBundle\Controller\FOSRestController as Controller;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\EventDispatcher\GenericEvent;
@@ -18,6 +19,10 @@ use Tahoe\Bundle\CrudBundle\Handler\EntityHandler;
 use Tahoe\Bundle\CrudBundle\Handler\HandlerInterface;
 use Tahoe\Bundle\CrudBundle\Repository\RepositoryInterface;
 use Tahoe\Bundle\CrudBundle\EventListener\CrudEvent;
+
+use FOS\RestBundle\Controller\Annotations\View;
+use Tahoe\Bundle\MultiTenancyBundle\Model\TenantAwareInterface;
+use FOS\RestBundle\Util\Codes;
 
 
 /**
@@ -72,49 +77,16 @@ class CrudController extends Controller
     }
 
     /**
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @View(serializerGroups={"list"})
      */
-    public function indexAction()
+    public function cgetAction()
     {
-        $entities = $this->repository->findAll();
-
-        return $this->render(
-            $this->getTemplateName('index'),
-            array(
-                'entities' => $entities,
-                'routePrefix' => $this->getResourcePathPrefix(),
-                'entityName' => $this->getParameter('entityName')
-            )
-        );
+        return $this->getCollection();
     }
 
-    protected function getTemplateName($type)
+    public function getCollection()
     {
-        $specificTemplate = sprintf(
-            '%s:Crud/%s:%s.html.twig',
-            $this->getParameter('bundleName'),
-            $this->getParameter('entityName'),
-            $type
-        );
-
-        if ($this->container->get('templating')->exists($specificTemplate)) {
-            return $specificTemplate;
-        }
-
-        $bundleTemplate = sprintf(
-            '%s:Crud:%s.html.twig',
-            $this->getParameter('bundleName'),
-            $type
-        );
-
-        if ($this->container->get('templating')->exists($bundleTemplate)) {
-            return $bundleTemplate;
-        }
-
-        return sprintf(
-            'TahoeCrudBundle:Crud:%s.html.twig',
-            $type
-        );
+        return $this->repository->findAll();
     }
 
     private function getResourcePrefix()
@@ -126,7 +98,7 @@ class CrudController extends Controller
     {
         return $this->getParameter(
             'resourcePathPrefix',
-            str_replace(" ", "_", strtolower($this->getParameter('entityName')))
+            $this->from_camel_case($this->getParameter('entityName'))
         );
     }
 
@@ -151,39 +123,40 @@ class CrudController extends Controller
         return $this;
     }
 
-    public function newAction(Request $request)
+    /**
+     * @View(statusCode = Codes::HTTP_BAD_REQUEST)
+     * @param Request $request
+     * @return \FOS\RestBundle\View\View|\Symfony\Component\Form\Form
+     */
+    public function postAction(Request $request)
     {
         $entity = $this->factory->createNew();
         $form = $this->createCreateForm($entity);
         $form->handleRequest($request);
 
         if ($form->isValid()) {
+            // this is usefull for related entities
+            $this->customDataHandling($entity);
             $this->handler->create($entity, true);
-            $this->setFlash('success', 'create');
 
             return $this->redirectToResource($entity);
         }
 
-        return $this->render(
-            $this->getTemplateName('new'),
-            array(
-                'form' => $form->createView(),
-                'routePrefix' => $this->getResourcePathPrefix(),
-                'entityName' => $this->getParameter('entityName'),
-                'additional_params' => $this->getAdditionalParams()
-            )
-        );
+        return $form;
+    }
+
+    public function customDataHandling($entity)
+    {
+        return ;
     }
 
     protected function createCreateForm($entity)
     {
-        return $this->createForm(
+        return $this->get('form.factory')->createNamed(
+            '',
             sprintf('%s_form', str_replace(" ", "", strtolower($this->getParameter('entityName')))),
             $entity,
-            array(
-                'method' => 'post',
-                'action' => $this->generateUrl(sprintf('%s_create', $this->getResourcePathPrefix()), $this->getAdditionalParams())
-            )
+            ['method' => 'post']
         );
     }
 
@@ -230,57 +203,44 @@ class CrudController extends Controller
         );
     }
 
-    public function redirectToResource($resource)
+    public function redirectToResource($resource, $code = 201)
     {
-        return $this->redirect(
-            $this->generateUrl(
-                $this->getResourcePathPrefix() . "_show",
-                array_merge($this->getAdditionalParams(), array('id' => $resource->getId()))
-            )
+        return $this->routeRedirectView(
+            sprintf('get_%s', $this->getResourcePathPrefix()),
+            array_merge($this->getAdditionalParams(), array('id' => $resource->getId())),
+            $code
         );
-    }
-
-    public function showAction(Request $request)
-    {
-        $entity = $this->findOr404($request);
-
-        return $this->render(
-            $this->getTemplateName('show'),
-            array(
-                'entity' => $entity,
-                'routePrefix' => $this->getResourcePathPrefix(),
-                'entityName' => $this->getParameter('entityName'),
-                'properties' => $this->getEntityFields($entity),
-                'additional_params' => $this->getAdditionalParams()
-            )
-        );
+//        return $this->redirect(
+//            $this->generateUrl(
+//                $this->getResourcePathPrefix() . "_show",
+//                array_merge($this->getAdditionalParams(), array('id' => $resource->getId()))
+//            )
+//        );
     }
 
     /**
-     * @param Request $request
-     * @param string  $identifier
-     *
+     * @View(serializerGroups={"details"})
      * @return object
-     *
-     * @throws NotFoundHttpException
      */
-    public function findOr404(Request $request, $identifier = 'id')
+    public function getAction($id)
+    {
+        $entity = $this->findOr404($id);
+
+        return $entity;
+    }
+
+    /**
+     * @param $id
+     * @return mixed
+     */
+    public function findOr404($id)
     {
 
-        $entity = $this->repository->find($request->get($identifier));
+        $entity = $this->repository->find($id);
 
         if (!$entity) {
             throw $this->createNotFoundException(
                 sprintf('Unable to find %s entity.', $this->getParameter('entityName'))
-            );
-        }
-
-        if (!$entity) {
-            throw new NotFoundHttpException(
-                sprintf(
-                    'Requested %s does not exist with criteria specified',
-                    $this->getParameter('entityName')
-                )
             );
         }
 
@@ -311,47 +271,34 @@ class CrudController extends Controller
         return implode('_', $ret);
     }
 
-
-
-    public function editAction(Request $request)
+    /**
+     * @View(statusCode = Codes::HTTP_BAD_REQUEST)
+     * @param Request $request
+     * @return \FOS\RestBundle\View\View|\Symfony\Component\Form\Form
+     */
+    public function putAction(Request $request, $id)
     {
-        $entity = $this->findOr404($request);
+        $entity = $this->findOr404($id);
 
         $form = $this->createEditForm($entity);
         $form->handleRequest($request);
 
         if ($form->isValid()) {
-
             $this->handler->update($entity, true);
 
-            $this->setFlash('success', 'update');
-
-            return $this->redirectToResource($entity);
+            return $this->redirectToResource($entity, Codes::HTTP_NO_CONTENT);
         }
 
-        return $this->render(
-            $this->getTemplateName('edit'),
-            array(
-                'form' => $form->createView(),
-                'routePrefix' => $this->getResourcePathPrefix(),
-                'entityName' => $this->getParameter('entityName'),
-                'additional_params' => $this->getAdditionalParams()
-            )
-        );
+        return $form;
     }
 
     protected function createEditForm($entity)
     {
-        return $this->createForm(
+        return $this->get('form.factory')->createNamed(
+            '',
             sprintf('%s_form', str_replace(" ", "", strtolower($this->getParameter('entityName')))),
             $entity,
-            array(
-                'method' => 'post',
-                'action' => $this->generateUrl(
-                    sprintf('%s_update', $this->getResourcePathPrefix()),
-                    array_merge(array('id' => $entity->getId()), $this->getAdditionalParams())
-                )
-            )
+            ['method' => 'put']
         );
     }
 
