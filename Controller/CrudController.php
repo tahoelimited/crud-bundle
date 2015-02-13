@@ -156,7 +156,7 @@ class CrudController extends Controller
             '',
             sprintf('%s_form', str_replace(" ", "", strtolower($this->getParameter('entityName')))),
             $entity,
-            ['method' => 'post']
+            ['method' => 'post', 'allow_extra_fields' => true]
         );
     }
 
@@ -298,7 +298,7 @@ class CrudController extends Controller
             '',
             sprintf('%s_form', str_replace(" ", "", strtolower($this->getParameter('entityName')))),
             $entity,
-            ['method' => 'put']
+            ['method' => 'put', 'allow_extra_fields' => true]
         );
     }
 
