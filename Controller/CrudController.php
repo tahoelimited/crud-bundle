@@ -98,7 +98,7 @@ class CrudController extends Controller
     {
         return $this->getParameter(
             'resourcePathPrefix',
-            str_replace(" ", "_", strtolower($this->getParameter('entityName')))
+            $this->from_camel_case($this->getParameter('entityName'))
         );
     }
 
@@ -123,39 +123,40 @@ class CrudController extends Controller
         return $this;
     }
 
-    public function newAction(Request $request)
+    /**
+     * @View(statusCode = Codes::HTTP_BAD_REQUEST)
+     * @param Request $request
+     * @return \FOS\RestBundle\View\View|\Symfony\Component\Form\Form
+     */
+    public function postAction(Request $request)
     {
         $entity = $this->factory->createNew();
         $form = $this->createCreateForm($entity);
         $form->handleRequest($request);
 
         if ($form->isValid()) {
+            // this is usefull for related entities
+            $this->customDataHandling($entity);
             $this->handler->create($entity, true);
-            $this->setFlash('success', 'create');
 
             return $this->redirectToResource($entity);
         }
 
-        return $this->render(
-            $this->getTemplateName('new'),
-            array(
-                'form' => $form->createView(),
-                'routePrefix' => $this->getResourcePathPrefix(),
-                'entityName' => $this->getParameter('entityName'),
-                'additional_params' => $this->getAdditionalParams()
-            )
-        );
+        return $form;
+    }
+
+    public function customDataHandling($entity)
+    {
+        return ;
     }
 
     protected function createCreateForm($entity)
     {
-        return $this->createForm(
+        return $this->get('form.factory')->createNamed(
+            '',
             sprintf('%s_form', str_replace(" ", "", strtolower($this->getParameter('entityName')))),
             $entity,
-            array(
-                'method' => 'post',
-                'action' => $this->generateUrl(sprintf('%s_create', $this->getResourcePathPrefix()), $this->getAdditionalParams())
-            )
+            ['method' => 'post']
         );
     }
 
@@ -202,14 +203,19 @@ class CrudController extends Controller
         );
     }
 
-    public function redirectToResource($resource)
+    public function redirectToResource($resource, $code = 201)
     {
-        return $this->redirect(
-            $this->generateUrl(
-                $this->getResourcePathPrefix() . "_show",
-                array_merge($this->getAdditionalParams(), array('id' => $resource->getId()))
-            )
+        return $this->routeRedirectView(
+            sprintf('get_%s', $this->getResourcePathPrefix()),
+            array_merge($this->getAdditionalParams(), array('id' => $resource->getId())),
+            $code
         );
+//        return $this->redirect(
+//            $this->generateUrl(
+//                $this->getResourcePathPrefix() . "_show",
+//                array_merge($this->getAdditionalParams(), array('id' => $resource->getId()))
+//            )
+//        );
     }
 
     /**
@@ -265,47 +271,34 @@ class CrudController extends Controller
         return implode('_', $ret);
     }
 
-
-
-    public function editAction(Request $request)
+    /**
+     * @View(statusCode = Codes::HTTP_BAD_REQUEST)
+     * @param Request $request
+     * @return \FOS\RestBundle\View\View|\Symfony\Component\Form\Form
+     */
+    public function putAction(Request $request, $id)
     {
-        $entity = $this->findOr404($request);
+        $entity = $this->findOr404($id);
 
         $form = $this->createEditForm($entity);
         $form->handleRequest($request);
 
         if ($form->isValid()) {
-
             $this->handler->update($entity, true);
 
-            $this->setFlash('success', 'update');
-
-            return $this->redirectToResource($entity);
+            return $this->redirectToResource($entity, Codes::HTTP_NO_CONTENT);
         }
 
-        return $this->render(
-            $this->getTemplateName('edit'),
-            array(
-                'form' => $form->createView(),
-                'routePrefix' => $this->getResourcePathPrefix(),
-                'entityName' => $this->getParameter('entityName'),
-                'additional_params' => $this->getAdditionalParams()
-            )
-        );
+        return $form;
     }
 
     protected function createEditForm($entity)
     {
-        return $this->createForm(
+        return $this->get('form.factory')->createNamed(
+            '',
             sprintf('%s_form', str_replace(" ", "", strtolower($this->getParameter('entityName')))),
             $entity,
-            array(
-                'method' => 'post',
-                'action' => $this->generateUrl(
-                    sprintf('%s_update', $this->getResourcePathPrefix()),
-                    array_merge(array('id' => $entity->getId()), $this->getAdditionalParams())
-                )
-            )
+            ['method' => 'put']
         );
     }
 
