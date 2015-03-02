@@ -8,6 +8,8 @@ use Doctrine\ORM\Mapping\ClassMetadataInfo;
 
 //use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use FOS\RestBundle\Controller\FOSRestController as Controller;
+use Pagerfanta\Adapter\DoctrineORMAdapter;
+use Pagerfanta\Pagerfanta;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\EventDispatcher\GenericEvent;
@@ -79,9 +81,26 @@ class CrudController extends Controller
     /**
      * @View(serializerGroups={"list"})
      */
-    public function cgetAction()
+    public function cgetAction(Request $request)
     {
-        return $this->getCollection();
+        $page = $request->get('page', null);
+        if ($page) {
+            $limit = $request->get('limit', 10);
+            return $this->getPagedCollection($page, $limit);
+        } else {
+            return $this->getCollection();
+        }
+    }
+
+    public function getPagedCollection($page = 1, $limit = 10)
+    {
+        $queryBuilder = $this->repository->createQueryBuilder('e');
+        $pagerAdapter = new DoctrineORMAdapter($queryBuilder);
+        $pager = new Pagerfanta($pagerAdapter);
+        $pager->setCurrentPage($page);
+        $pager->setMaxPerPage($limit);
+
+        return $pager->getIterator()->getArrayCopy();
     }
 
     public function getCollection()
@@ -219,7 +238,7 @@ class CrudController extends Controller
     }
 
     /**
-     * @View(serializerGroups={"details"})
+     * @View(serializerGroups={"details"}, templateVar="entity")
      * @return object
      */
     public function getAction($id)
