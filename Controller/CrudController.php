@@ -8,6 +8,8 @@ use Doctrine\ORM\Mapping\ClassMetadataInfo;
 
 //use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use FOS\RestBundle\Controller\FOSRestController as Controller;
+use Hateoas\Configuration\Route;
+use Hateoas\Representation\Factory\PagerfantaFactory;
 use Pagerfanta\Adapter\DoctrineORMAdapter;
 use Pagerfanta\Pagerfanta;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -94,13 +96,21 @@ class CrudController extends Controller
 
     public function getPagedCollection($page = 1, $limit = 10)
     {
-        $queryBuilder = $this->repository->createQueryBuilder('e');
+        $queryBuilder = $this->get('doctrine.orm.default_entity_manager')
+            ->getRepository('TahoeAppBundle:Run')->createQueryBuilder('e');
+        //$this->repository->createQueryBuilder('e');
         $pagerAdapter = new DoctrineORMAdapter($queryBuilder);
         $pager = new Pagerfanta($pagerAdapter);
         $pager->setCurrentPage($page);
         $pager->setMaxPerPage($limit);
 
-        return $pager->getIterator()->getArrayCopy();
+        return [
+            'limit' => (integer) $limit,
+            'page' => (integer) $page,
+            'pages' => $pager->getNbPages(),
+            'total' => $pager->getNbResults(),
+            'data' => $pager->getIterator()->getArrayCopy()
+        ];
     }
 
     public function getCollection()
