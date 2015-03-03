@@ -88,17 +88,25 @@ class CrudController extends Controller
         $page = $request->get('page', null);
         if ($page) {
             $limit = $request->get('limit', 10);
-            return $this->getPagedCollection($page, $limit);
+            $query = $request->get('q', null);
+            $sorting = $request->get('sort', null);
+            $order = $request->get('order', 'DESC');
+            return $this->getPagedCollection($page, $limit, $query, $sorting, $order);
         } else {
             return $this->getCollection();
         }
     }
 
-    public function getPagedCollection($page = 1, $limit = 10)
+    public function getPagedCollection($page = 1, $limit = 10, $query = null, $sorting = null, $order = 'DESC')
     {
-        $queryBuilder = $this->get('doctrine.orm.default_entity_manager')
-            ->getRepository('TahoeAppBundle:Run')->createQueryBuilder('e');
-        //$this->repository->createQueryBuilder('e');
+        $queryBuilder = $this->repository->createQueryBuilder('e');
+        $this->prepareJoinedQuery($queryBuilder);
+        if ($query) {
+            $this->createFilterQuery($queryBuilder, $query);
+        }
+        if ($sorting) {
+            $queryBuilder->addOrderBy($sorting, $order);
+        }
         $pagerAdapter = new DoctrineORMAdapter($queryBuilder);
         $pager = new Pagerfanta($pagerAdapter);
         $pager->setCurrentPage($page);
