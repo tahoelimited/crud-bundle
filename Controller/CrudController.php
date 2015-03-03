@@ -105,7 +105,12 @@ class CrudController extends Controller
             $this->createFilterQuery($queryBuilder, $query);
         }
         if ($sorting) {
-            $queryBuilder->addOrderBy($sorting, $order);
+            if (strpos($sorting, '.') === false) {
+                $queryBuilder->addOrderBy(sprintf('e.%s', $sorting), $order);
+            } else {
+                $queryBuilder->addOrderBy($sorting, $order);
+            }
+
         }
         $pagerAdapter = new DoctrineORMAdapter($queryBuilder);
         $pager = new Pagerfanta($pagerAdapter);
