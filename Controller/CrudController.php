@@ -3,10 +3,12 @@
 namespace Tahoe\Bundle\CrudBundle\Controller;
 
 use Doctrine\Bundle\DoctrineBundle\Mapping\DisconnectedMetadataFactory;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
 
 //use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Doctrine\ORM\QueryBuilder;
 use FOS\RestBundle\Controller\FOSRestController as Controller;
 use Hateoas\Configuration\Route;
 use Hateoas\Representation\Factory\PagerfantaFactory;
@@ -97,6 +99,11 @@ class CrudController extends Controller
         }
     }
 
+    public function prepareJoinedQuery(QueryBuilder $queryBuilder)
+    {
+        return $queryBuilder;
+    }
+
     public function getPagedCollection($page = 1, $limit = 10, $query = null, $sorting = null, $order = 'DESC')
     {
         $queryBuilder = $this->repository->createQueryBuilder('e');
@@ -128,7 +135,9 @@ class CrudController extends Controller
 
     public function getCollection()
     {
-        return $this->repository->findAll();
+        $collection = $this->repository->findAll();
+
+        return is_array($collection) ? new ArrayCollection($collection) : $collection;
     }
 
     private function getResourcePrefix()
