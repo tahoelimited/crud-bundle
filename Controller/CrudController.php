@@ -99,9 +99,14 @@ class CrudController extends Controller
         }
     }
 
-    public function prepareJoinedQuery(QueryBuilder $queryBuilder)
+    protected function prepareJoinedQuery(QueryBuilder $queryBuilder)
     {
         return $queryBuilder;
+    }
+
+    protected function createFilterQuery(QueryBuilder $query, $filter)
+    {
+        return;
     }
 
     public function getPagedCollection($page = 1, $limit = 10, $query = null, $sorting = null, $order = 'DESC')
