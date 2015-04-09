@@ -140,9 +140,11 @@ class CrudController extends Controller
 
     public function getCollection()
     {
-        $collection = $this->repository->findAll();
-
-        return is_array($collection) ? new ArrayCollection($collection) : $collection;
+        $collection = $this->repository->createQueryBuilder('e')->getQuery()->getArrayResult();
+        return $collection;
+//        //$collection = $this->repository->findAll();
+//
+//        return is_array($collection) ? new ArrayCollection($collection) : $collection;
     }
 
     private function getResourcePrefix()
