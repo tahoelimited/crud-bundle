@@ -18,6 +18,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Flash\FlashBag;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tahoe\Bundle\CrudBundle\Factory\FactoryInterface;
@@ -411,12 +412,12 @@ class CrudController extends Controller
         );
     }
 
-    public function deleteAction(Request $request)
+    public function deleteAction(Request $request, $id)
     {
-        $entity = $this->findOr404($request);
+        $entity = $this->findOr404($id);
 
         $this->handler->delete($entity, true);
 
-        return $this->redirectToIndex();
+        return new Response('', Codes::HTTP_NO_CONTENT);
     }
 }
